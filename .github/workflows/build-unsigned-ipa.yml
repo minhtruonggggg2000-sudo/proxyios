@@ -1,0 +1,42 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Check Xcode project
+        run: xcodebuild -list -project OGIOSSafe.xcodeproj
+
+      - name: Build iOS app
+        run: |
+          xcodebuild \
+            -project OGIOSSafe.xcodeproj \
+            -scheme OGIOSSafe \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          APP=$(find build/Build/Products/Release-iphoneos \
+            -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$APP"
+          cp -R "$APP" Payload/
+          zip -r OGIOSSafe-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: OGIOSSafe-unsigned-IPA
+          path: OGIOSSafe-unsigned.ipa
